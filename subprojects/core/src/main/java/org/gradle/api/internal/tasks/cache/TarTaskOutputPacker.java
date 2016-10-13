@@ -20,7 +20,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.tools.tar.TarEntry;
@@ -46,13 +45,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Packages task output to a POSIX TAR file.
+ * Packages task output to a POSIX TAR file. Because Ant's TAR implementation
+ * supports only 1 second precision for file modification times, we encode the
+ * fractional nanoseconds into the group ID of the file.
  */
 public class TarTaskOutputPacker implements TaskOutputPacker {
     private static final Pattern PROPERTY_PATH = Pattern.compile("property-([^/]+)(?:/(.*))?");
@@ -130,7 +130,7 @@ public class TarTaskOutputPacker implements TaskOutputPacker {
         String path = dirDetails.getRelativePath().getPathString();
         try {
             TarEntry entry = new TarEntry(propertyRoot + path + "/");
-            entry.setModTime(dirDetails.getLastModified());
+            storeModificationTime(entry, dirDetails.getLastModified());
             entry.setMode(UnixStat.DIR_FLAG | dirDetails.getMode());
             outputStream.putNextEntry(entry);
             outputStream.closeEntry();
@@ -142,7 +142,7 @@ public class TarTaskOutputPacker implements TaskOutputPacker {
     private void storeFileEntry(File file, String path, long lastModified, long size, int mode, TarOutputStream outputStream) {
         try {
             TarEntry entry = new TarEntry(path);
-            entry.setModTime(lastModified);
+            storeModificationTime(entry, lastModified);
             entry.setSize(size);
             entry.setMode(UnixStat.FILE_FLAG | mode);
             outputStream.putNextEntry(entry);
@@ -171,7 +171,6 @@ public class TarTaskOutputPacker implements TaskOutputPacker {
             }
         });
         TarEntry entry;
-        Set<CacheableTaskOutputFilePropertySpec> seenProperties = Sets.newHashSet();
         while ((entry = tarInput.getNextEntry()) != null) {
             String name = entry.getName();
             Matcher matcher = PROPERTY_PATH.matcher(name);
@@ -185,11 +184,6 @@ public class TarTaskOutputPacker implements TaskOutputPacker {
             }
 
             File specRoot = propertySpec.getOutputFile();
-            // Create parent directories when we first see a property
-            if (seenProperties.add(propertySpec)) {
-                FileUtils.forceMkdir(specRoot.getParentFile());
-            }
-
             String path = matcher.group(2);
             File outputFile;
             if (Strings.isNullOrEmpty(path)) {
@@ -207,9 +201,25 @@ public class TarTaskOutputPacker implements TaskOutputPacker {
             }
             //noinspection OctalInteger
             fileSystem.chmod(outputFile, entry.getMode() & 0777);
-            if (!outputFile.setLastModified(entry.getModTime().getTime())) {
+            long lastModified = getModificationTime(entry);
+            if (!outputFile.setLastModified(lastModified)) {
                 throw new IOException(String.format("Could not set modification time for '%s'", outputFile));
             }
         }
+    }
+
+    private static void storeModificationTime(TarEntry entry, long lastModified) {
+        // This will be divided by 1000 internally
+        entry.setModTime(lastModified);
+        // Store excess nanoseconds in group ID
+        long excessNanos = (lastModified % 1000) * 1000 * 1000;
+        entry.setGroupId(excessNanos);
+    }
+
+    private static long getModificationTime(TarEntry entry) {
+        long lastModified = entry.getModTime().getTime();
+        long excessNanos = entry.getLongGroupId();
+        lastModified += excessNanos / 1000 / 1000;
+        return lastModified;
     }
 }

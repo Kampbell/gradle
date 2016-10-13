@@ -17,9 +17,6 @@
 package org.gradle.api.internal.changedetection.state;
 
 import com.google.common.collect.ImmutableMap;
-import org.gradle.api.file.FileCollection;
-import org.gradle.api.internal.tasks.TaskFilePropertySpec;
-import org.gradle.internal.serialize.SerializerRegistry;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,39 +24,14 @@ import java.util.Map;
 /**
  * Takes a snapshot of the output files of a task.
  */
-public class OutputFilesCollectionSnapshotter implements FileCollectionSnapshotter {
-    private final FileCollectionSnapshotter snapshotter;
-
-    public OutputFilesCollectionSnapshotter(FileCollectionSnapshotter snapshotter) {
-        this.snapshotter = snapshotter;
-    }
-
-    public void registerSerializers(SerializerRegistry registry) {
-        snapshotter.registerSerializers(registry);
-    }
-
-    public FileCollectionSnapshot emptySnapshot() {
-        return snapshotter.emptySnapshot();
-    }
-
-    @Override
-    public FileCollectionSnapshot snapshot(FileCollection files, TaskFilePropertyCompareStrategy compareStrategy, SnapshotNormalizationStrategy snapshotNormalizationStrategy) {
-        return snapshotter.snapshot(files, compareStrategy, snapshotNormalizationStrategy);
-    }
-
-    @Override
-    public FileCollectionSnapshot snapshot(TaskFilePropertySpec propertySpec) {
-        return snapshotter.snapshot(propertySpec);
-    }
-
+public class OutputFilesSnapshotter {
     /**
      * Returns a new snapshot that filters out entries that should not be considered outputs of the task.
      */
     public FileCollectionSnapshot createOutputSnapshot(
         FileCollectionSnapshot afterPreviousExecution,
         FileCollectionSnapshot beforeExecution,
-        FileCollectionSnapshot afterExecution,
-        FileCollection roots
+        FileCollectionSnapshot afterExecution
     ) {
         FileCollectionSnapshot filesSnapshot;
         Map<String, NormalizedFileSnapshot> afterSnapshots = afterExecution.getSnapshots();

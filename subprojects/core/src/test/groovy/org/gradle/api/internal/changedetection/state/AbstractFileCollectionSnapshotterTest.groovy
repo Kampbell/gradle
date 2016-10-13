@@ -16,44 +16,33 @@
 package org.gradle.api.internal.changedetection.state
 
 import com.google.common.collect.Iterators
-import com.google.common.hash.Hashing
-import com.google.common.io.Files
 import org.gradle.api.file.FileCollection
-import org.gradle.api.file.FileTreeElement
 import org.gradle.api.internal.cache.StringInterner
 import org.gradle.api.internal.changedetection.rules.ChangeType
 import org.gradle.api.internal.changedetection.rules.FileChange
 import org.gradle.api.internal.file.TestFiles
 import org.gradle.api.internal.file.collections.SimpleFileCollection
+import org.gradle.api.internal.hash.DefaultFileHasher
 import org.gradle.test.fixtures.file.TestFile
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.gradle.util.ChangeListener
 import org.junit.Rule
 import spock.lang.Specification
 
-import static TaskFilePropertySnapshotNormalizationStrategy.ABSOLUTE
 import static org.gradle.api.internal.changedetection.state.TaskFilePropertyCompareStrategy.*
+import static org.gradle.api.internal.changedetection.state.TaskFilePropertySnapshotNormalizationStrategy.ABSOLUTE
 
-public class DefaultFileCollectionSnapshotterTest extends Specification {
-    def fileSnapshotter = Stub(FileSnapshotter)
+public class AbstractFileCollectionSnapshotterTest extends Specification {
     def stringInterner = new StringInterner()
-    def snapshotter = new DefaultFileCollectionSnapshotter(fileSnapshotter, stringInterner, TestFiles.fileSystem(), TestFiles.directoryFileTreeFactory())
+    def snapshotter = new AbstractFileCollectionSnapshotter(new DefaultFileHasher(), stringInterner, TestFiles.fileSystem(), TestFiles.directoryFileTreeFactory()) {
+        @Override
+        Class<? extends FileCollectionSnapshotter> getRegisteredType() {
+            FileCollectionSnapshotter
+        }
+    }
     def listener = Mock(ChangeListener)
     @Rule
     public final TestNameTestDirectoryProvider tmpDir = new TestNameTestDirectoryProvider()
-
-    def setup() {
-        fileSnapshotter.snapshot(_) >> { FileTreeElement fileTreeElement ->
-            return Stub(FileSnapshot) {
-                getHash() >> Files.asByteSource(fileTreeElement.file).hash(Hashing.md5())
-            }
-        }
-        fileSnapshotter.snapshot(_) >> { File file ->
-            return Stub(FileSnapshot) {
-                getHash() >> Files.asByteSource(file).hash(Hashing.md5())
-            }
-        }
-    }
 
     def getFilesReturnsOnlyTheFilesWhichExisted() {
         given:
@@ -109,8 +98,7 @@ public class DefaultFileCollectionSnapshotterTest extends Specification {
         snapshot.elements == [file, dir, dir2, file2, noExist]
     }
 
-    // Documenting existing behaviour
-    def "retains order of elements in the snapshot with missing files at the end"() {
+    def "retains order of elements in the snapshot"() {
         given:
         TestFile file = tmpDir.createFile('file1')
         TestFile file2 = tmpDir.file('file2')
@@ -121,7 +109,7 @@ public class DefaultFileCollectionSnapshotterTest extends Specification {
         def snapshot = snapshotter.snapshot(files(file, file2, file3, file4), ORDERED, ABSOLUTE)
 
         then:
-        snapshot.elements == [file, file4, file2, file3]
+        snapshot.elements == [file, file2, file3, file4]
     }
 
     def generatesEventWhenFileAdded() {
@@ -297,7 +285,7 @@ public class DefaultFileCollectionSnapshotterTest extends Specification {
         TestFile file = tmpDir.createFile('file')
 
         when:
-        FileCollectionSnapshot snapshot = snapshotter.emptySnapshot()
+        FileCollectionSnapshot snapshot = FileCollectionSnapshot.EMPTY
         FileCollectionSnapshot newSnapshot = snapshotter.snapshot(files(file), UNORDERED, ABSOLUTE)
         changes(newSnapshot, snapshot, listener)
 

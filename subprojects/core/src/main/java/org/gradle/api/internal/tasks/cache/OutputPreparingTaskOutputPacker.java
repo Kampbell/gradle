@@ -27,12 +27,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * Makes sure no files are left over among the outputs of the task before actually loading a cached result.
+ * Prepares a task's outputs to be loaded from cache: removes any previous output and makes sure the output directories exist.
  */
-public class OutputClearingTaskOutputPacker implements TaskOutputPacker {
+public class OutputPreparingTaskOutputPacker implements TaskOutputPacker {
     private final TaskOutputPacker delegate;
 
-    public OutputClearingTaskOutputPacker(TaskOutputPacker delegate) {
+    public OutputPreparingTaskOutputPacker(TaskOutputPacker delegate) {
         this.delegate = delegate;
     }
 
@@ -48,12 +48,14 @@ public class OutputClearingTaskOutputPacker implements TaskOutputPacker {
             File output = property.getOutputFile();
             switch (property.getOutputType()) {
                 case DIRECTORY:
-                    FileUtils.forceMkdir(output);
+                    makeDirectory(output);
                     FileUtils.cleanDirectory(output);
                     break;
                 case FILE:
-                    if (output.exists()) {
-                        FileUtils.forceDelete(output);
+                    if (!makeDirectory(output.getParentFile())) {
+                        if (output.exists()) {
+                            FileUtils.forceDelete(output);
+                        }
                     }
                     break;
                 default:
@@ -61,5 +63,15 @@ public class OutputClearingTaskOutputPacker implements TaskOutputPacker {
             }
         }
         delegate.unpack(taskOutputs, input);
+    }
+
+    private static boolean makeDirectory(File output) throws IOException {
+        if (output.isDirectory()) {
+            return false;
+        } else if (output.isFile()) {
+            FileUtils.forceDelete(output);
+        }
+        FileUtils.forceMkdir(output);
+        return true;
     }
 }

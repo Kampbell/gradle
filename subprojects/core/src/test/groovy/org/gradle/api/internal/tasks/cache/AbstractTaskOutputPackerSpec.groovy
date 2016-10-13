@@ -20,6 +20,8 @@ import groovy.transform.EqualsAndHashCode
 import groovy.transform.ToString
 import org.gradle.api.file.FileCollection
 import org.gradle.api.internal.TaskOutputsInternal
+import org.gradle.api.internal.changedetection.state.FileCollectionSnapshotter
+import org.gradle.api.internal.changedetection.state.GenericFileCollectionSnapshotter
 import org.gradle.api.internal.changedetection.state.SnapshotNormalizationStrategy
 import org.gradle.api.internal.changedetection.state.TaskFilePropertyCompareStrategy
 import org.gradle.api.internal.changedetection.state.TaskFilePropertySnapshotNormalizationStrategy
@@ -46,6 +48,8 @@ abstract class AbstractTaskOutputPackerSpec extends Specification {
     protected static class TestProperty implements CacheableTaskOutputFilePropertySpec {
         String propertyName
         File outputFile
+        CacheableTaskOutputFilePropertySpec.OutputType outputType
+        Class<? extends FileCollectionSnapshotter> snapshotter = GenericFileCollectionSnapshotter
 
         @Override
         FileCollection getPropertyFiles() {
@@ -54,7 +58,7 @@ abstract class AbstractTaskOutputPackerSpec extends Specification {
 
         @Override
         CacheableTaskOutputFilePropertySpec.OutputType getOutputType() {
-            return outputFile.directory ? DIRECTORY : FILE
+            return outputType ?: outputFile.directory ? DIRECTORY : FILE
         }
 
         @Override
