@@ -64,6 +64,11 @@ ext {
                 from rootProject.configurations.gradlePlugins - rootProject.configurations.runtime
             }
         }
+		from project(':cppunit')
+		into('cppunit') {
+            include 'cppunit'
+            include 'build.gradle'
+		}
     }
 
     allDistImage = copySpec {

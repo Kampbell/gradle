@@ -103,6 +103,7 @@ def buckets = [
         ":codeQuality",
         ":testingJvm",
         ":ide",
+        ":cppunit",
         ":testingNative",
         ":jacoco",
         ":modelGroovy",
