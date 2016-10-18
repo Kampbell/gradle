@@ -64,12 +64,13 @@ ext {
                 from rootProject.configurations.gradlePlugins - rootProject.configurations.runtime
             }
         }
-		from project(':cppunit')
-		into('cppunit') {
-            include 'cppunit'
-            include 'build.gradle'
+        into('src') {
+			from("$rootDir/subprojects") {
+				include 'cppunit/src/**'
+				include 'cppunit/build.gradle'
+			}
 		}
-    }
+   }
 
     allDistImage = copySpec {
         with binDistImage
