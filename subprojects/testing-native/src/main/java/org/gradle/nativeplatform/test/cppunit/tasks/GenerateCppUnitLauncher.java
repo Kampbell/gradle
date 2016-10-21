@@ -17,8 +17,12 @@
 package org.gradle.nativeplatform.test.cppunit.tasks;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.UncheckedIOException;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.nativeplatform.test.cppunit.CppUnitTestSuiteSpec;
@@ -34,8 +38,20 @@ public class GenerateCppUnitLauncher extends DefaultTask {
     
     @TaskAction
     public void generate() {
-        writeToFile(sourceDir, "gradle_cppunit_main.cpp");
-        writeToFile(headerDir, "gradle_cppunit_register.h");
+		File source = new File(sourceDir, "gradle_cppunit_main.cpp");
+		try {
+			PrintWriter printWriter= new PrintWriter(source);
+    		printWriter.println("#include \"Poco/CppUnit/TestRunner.h\"");
+    		printWriter.print("#include \"");
+    		printWriter.print(cppUnitTestSuiteSpec.getName());
+    		printWriter.println(".h\"");
+    		printWriter.print("CppUnitMain(");
+    		printWriter.print(cppUnitTestSuiteSpec.getName());
+    		printWriter.println(")");
+    		printWriter.close();
+		} catch (FileNotFoundException e) {
+            throw new UncheckedIOException(e);
+		}
     }
 
     private void writeToFile(File directory, String fileName) {
