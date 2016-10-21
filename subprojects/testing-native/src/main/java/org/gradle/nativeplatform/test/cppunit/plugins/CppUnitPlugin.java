@@ -60,7 +60,7 @@ public class CppUnitPlugin implements Plugin<Project> {
     @SuppressWarnings("UnusedDeclaration")
     static class Rules extends RuleSource {
 
-        private static final String CPPUNIT_LAUNCHER_SOURCE_SET = "cppunitLauncher";
+        private static final String CPPUNIT_LAUNCHER_SOURCE_SET = "cppUnitLauncher";
 
         @ComponentType
         public void registerCppUnitTestSuiteSpecType(TypeBuilder<CppUnitTestSuiteSpec> builder) {
@@ -72,7 +72,7 @@ public class CppUnitPlugin implements Plugin<Project> {
             suite.getSources().create(CPPUNIT_LAUNCHER_SOURCE_SET, CppSourceSet.class, new Action<CppSourceSet>() {
                 @Override
                 public void execute(CppSourceSet launcherSources) {
-                    File baseDir = new File(buildDir, "src/" + suite.getName() + "/cppunitLauncher");
+                    File baseDir = new File(buildDir, "src/" + suite.getName() + "/" + CPPUNIT_LAUNCHER_SOURCE_SET);
                     launcherSources.getSource().srcDir(new File(baseDir, "cpp"));
                     launcherSources.getExportedHeaders().srcDir(new File(baseDir, "headers"));
                 }
