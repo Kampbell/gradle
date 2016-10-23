@@ -17,10 +17,13 @@
 package org.gradle.testing.jacoco.plugins
 
 import org.gradle.integtests.fixtures.AbstractTaskRelocationIntegrationTest
+import org.gradle.util.Requires
 
 import static org.gradle.util.BinaryDiffUtils.levenshteinDistance
 import static org.gradle.util.BinaryDiffUtils.toHexStrings
+import static org.gradle.util.TestPrecondition.FIX_TO_WORK_ON_JAVA9
 
+@Requires(FIX_TO_WORK_ON_JAVA9)
 class JacocoTestRelocationIntegrationTest extends AbstractTaskRelocationIntegrationTest {
     @Override
     protected String getTaskName() {
@@ -69,12 +72,12 @@ class JacocoTestRelocationIntegrationTest extends AbstractTaskRelocationIntegrat
         def movedLength = movedBytes.length
         def lengthDiff = Math.abs(originalLength - movedLength)
         def length = Math.min(originalLength, movedLength)
-        println String.format("Original is %d bytes, moved is %d bytes (%.2f%%)", originalLength, movedLength, 100d * lengthDiff / length)
+        println String.format("Original is %d bytes, moved is %d bytes (%.2f%% difference)", originalLength, movedLength, 100d * lengthDiff / length)
 
         def distance = levenshteinDistance(originalBytes, movedBytes)
-        println String.format("Levenshtein distance if %s (%.2f%%)", distance, 100d * distance / length)
-        // We are okay with 0.5% distance
-        if (distance > length * 0.005) {
+        println String.format("Levenshtein distance if %s (%.2f%% difference)", distance, 100d * distance / length)
+        // We are okay with 2% distance
+        if (distance > length * 0.02) {
             // If we had too big a difference we fall back to Groovy reporting it
             def originalAsHex = toHexStrings(originalBytes)
             def movedAsHex = toHexStrings(movedBytes)

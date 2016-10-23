@@ -95,11 +95,6 @@ public class FixedSharedModeCrossProcessCacheAccess extends AbstractCrossProcess
     }
 
     @Override
-    public FileLock getLock() throws IllegalStateException {
-        return fileLock;
-    }
-
-    @Override
     public void close() {
         if (fileLock != null) {
             try {
@@ -118,11 +113,6 @@ public class FixedSharedModeCrossProcessCacheAccess extends AbstractCrossProcess
 
     @Override
     public <T> T withFileLock(Factory<T> factory) {
-        throw failure();
-    }
-
-    @Override
-    public Runnable acquireFileLock(Runnable completion) {
         throw failure();
     }
 

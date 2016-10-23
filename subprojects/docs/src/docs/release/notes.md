@@ -34,11 +34,27 @@ The following are the newly deprecated items in this Gradle release. If you have
 ### Example deprecation
 -->
 
+### Deprecated Ant-related Java compiler properties
+
+* `JavaCompile.dependencyCacheDir`
+* `JavaCompileSpec.dependencyCacheDir`
+* `JavaPluginConvention.dependencyCacheDir`
+* `JavaPluginConvention.dependencyCacheDirName`
+* `CompileOptions.useDepend`
+* `CompileOptions.depend()`
+
+### Deprecated methods
+
+* `FileCollectionDependency.registerWatchPoints()` is deprecated. This method is intended only for internal use and will be removed in Gradle 4.0. You can use the new `getFiles()` method as a replacement, if required.
+
 ## Potential breaking changes
 
-<!--
-### Example breaking change
--->
+### BuildInvocations model is always returned for the connected project
+
+In previous Gradle versions, when connected to a sub-project and asking for the `BuildInvocations` model using a `ProjectConnection`,
+the `BuildInvocations` model for the root project was returned instead. Gradle will now
+return the `BuildInvocations` model of the project that the `ProjectConnection` is connected to.
+
 
 ### Java `Test` task doesn't track working directory as input
 
