@@ -16,7 +16,10 @@
 
 package org.gradle.nativeplatform.toolchain.internal.msvcpp;
 
-import com.google.common.collect.Lists;
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+
 import org.gradle.api.Transformer;
 import org.gradle.internal.Transformers;
 import org.gradle.internal.jvm.Jvm;
@@ -27,19 +30,27 @@ import org.gradle.nativeplatform.internal.LinkerSpec;
 import org.gradle.nativeplatform.internal.StaticLibraryArchiverSpec;
 import org.gradle.nativeplatform.platform.internal.NativePlatformInternal;
 import org.gradle.nativeplatform.platform.internal.OperatingSystemInternal;
-import org.gradle.nativeplatform.toolchain.internal.*;
+import org.gradle.nativeplatform.toolchain.internal.AbstractPlatformToolProvider;
+import org.gradle.nativeplatform.toolchain.internal.CommandLineToolContext;
+import org.gradle.nativeplatform.toolchain.internal.CommandLineToolInvocationWorker;
+import org.gradle.nativeplatform.toolchain.internal.DefaultCommandLineToolInvocationWorker;
+import org.gradle.nativeplatform.toolchain.internal.DefaultMutableCommandLineToolContext;
+import org.gradle.nativeplatform.toolchain.internal.MutableCommandLineToolContext;
+import org.gradle.nativeplatform.toolchain.internal.NativeCompileSpec;
+import org.gradle.nativeplatform.toolchain.internal.OutputCleaningCompiler;
+import org.gradle.nativeplatform.toolchain.internal.PCHUtils;
+import org.gradle.nativeplatform.toolchain.internal.ToolType;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.AssembleSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.CCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.CPCHCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.CppCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.CppPCHCompileSpec;
+import org.gradle.nativeplatform.toolchain.internal.compilespec.WindowsMessageCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.WindowsResourceCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.tools.CommandLineToolConfigurationInternal;
 import org.gradle.process.internal.ExecActionFactory;
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
+import com.google.common.collect.Lists;
 
 class VisualCppPlatformToolProvider extends AbstractPlatformToolProvider {
     private final Map<ToolType, CommandLineToolConfigurationInternal> commandLineToolConfigurations;
@@ -108,6 +119,14 @@ class VisualCppPlatformToolProvider extends AbstractPlatformToolProvider {
     @Override
     protected Compiler<?> createObjectiveCCompiler() {
         throw unavailableTool("Objective-C is not available on the Visual C++ toolchain");
+    }
+
+    @Override
+    protected Compiler<WindowsMessageCompileSpec> createWindowsMessageCompiler() {
+        CommandLineToolInvocationWorker commandLineTool = tool("Windows message compiler", sdk.getMessageCompiler(targetPlatform));
+        String objectFileExtension = ".mc";
+        WindowsMessageCompiler windowsMessageCompiler = new WindowsMessageCompiler(buildOperationExecutor, compilerOutputFileNamingSchemeFactory, commandLineTool, context(commandLineToolConfigurations.get(ToolType.WINDOW_MESSAGES_COMPILER)), addIncludePathAndDefinitions(WindowsMessageCompileSpec.class), objectFileExtension, false);
+        return new OutputCleaningCompiler<WindowsMessageCompileSpec>(windowsMessageCompiler, compilerOutputFileNamingSchemeFactory, objectFileExtension);
     }
 
     @Override
