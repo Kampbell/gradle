@@ -32,6 +32,7 @@ import org.gradle.nativeplatform.toolchain.internal.compilespec.ObjectiveCCompil
 import org.gradle.nativeplatform.toolchain.internal.compilespec.ObjectiveCPCHCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.ObjectiveCppCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.ObjectiveCppPCHCompileSpec;
+import org.gradle.nativeplatform.toolchain.internal.compilespec.WindowsMessageCompileSpec;
 import org.gradle.nativeplatform.toolchain.internal.compilespec.WindowsResourceCompileSpec;
 import org.gradle.util.TreeVisitor;
 
@@ -104,6 +105,9 @@ public abstract class AbstractPlatformToolProvider implements PlatformToolProvid
         if (ObjectiveCPCHCompileSpec.class.isAssignableFrom(spec)) {
             return CompilerUtil.castCompiler(createObjectiveCPCHCompiler());
         }
+        if (WindowsMessageCompileSpec.class.isAssignableFrom(spec)) {
+            return CompilerUtil.castCompiler(createWindowsMessageCompiler());
+        }
         if (WindowsResourceCompileSpec.class.isAssignableFrom(spec)) {
             return CompilerUtil.castCompiler(createWindowsResourceCompiler());
         }
@@ -153,6 +157,10 @@ public abstract class AbstractPlatformToolProvider implements PlatformToolProvid
 
     protected Compiler<?> createObjectiveCPCHCompiler() {
         throw unavailableTool("Obj-C compiler is not available");
+    }
+
+    protected Compiler<?> createWindowsMessageCompiler() {
+        throw unavailableTool("Windows message compiler is not available");
     }
 
     protected Compiler<?> createWindowsResourceCompiler() {
