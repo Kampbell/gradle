@@ -16,10 +16,17 @@
 
 package org.gradle.nativeplatform.fixtures;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
-import net.rubygrapefruit.platform.SystemInfo;
-import net.rubygrapefruit.platform.WindowsRegistry;
+import static org.gradle.nativeplatform.fixtures.VisualStudioVersion.VISUALSTUDIO_2012;
+import static org.gradle.nativeplatform.fixtures.VisualStudioVersion.VISUALSTUDIO_2013;
+import static org.gradle.nativeplatform.fixtures.VisualStudioVersion.VISUALSTUDIO_2015;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.annotation.Nullable;
+
 import org.gradle.api.internal.file.TestFiles;
 import org.gradle.api.specs.Spec;
 import org.gradle.internal.nativeintegration.ProcessEnvironment;
@@ -43,13 +50,11 @@ import org.gradle.testfixtures.internal.NativeServicesTestFixture;
 import org.gradle.util.CollectionUtils;
 import org.gradle.util.VersionNumber;
 
-import javax.annotation.Nullable;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 
-import static org.gradle.nativeplatform.fixtures.VisualStudioVersion.*;
+import net.rubygrapefruit.platform.SystemInfo;
+import net.rubygrapefruit.platform.WindowsRegistry;
 
 public class AvailableToolChains {
     private static List<ToolChainCandidate> toolChains;

@@ -16,6 +16,8 @@
 
 package org.gradle.nativeplatform.toolchain.internal.msvcpp;
 
+import java.io.File;
+
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.os.OperatingSystem;
@@ -32,8 +34,6 @@ import org.gradle.platform.base.internal.toolchain.ToolChainAvailability;
 import org.gradle.process.internal.ExecActionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 public class VisualCppToolChain extends ExtendableToolChain<VisualCppPlatformToolChain> implements VisualCpp, NativeToolChainInternal {
 
@@ -127,7 +127,6 @@ public class VisualCppToolChain extends ExtendableToolChain<VisualCppPlatformToo
             availability = new ToolChainAvailability();
             checkAvailable(availability);
         }
-
         return availability;
     }
 

@@ -16,6 +16,7 @@
 
 apply from: new File(settingsDir, 'gradle/remoteHttpCacheSettings.gradle')
 
+include 'cppunit'
 include 'distributions'
 include 'baseServices'
 include 'baseServicesGroovy'
