@@ -34,6 +34,9 @@ dependencies {
     api project(":resources")
     api project(":cli")
     api project(":native")
+    api project(":persistentCache")
+    api project(":buildCache")
+    api project(":coreApi")
 
     api project(":processServices")
     api project(":jvmServices")
@@ -51,6 +54,7 @@ dependencies {
     implementation libraries.commons_lang
     implementation libraries.jcip
     implementation libraries.nativePlatform
+    implementation libraries.commons_compress
 
     runtimeOnly project(":docs")
 
@@ -75,6 +79,7 @@ dependencies {
 }
 
 useTestFixtures()
+useTestFixtures(project: ":coreApi")
 useTestFixtures(project: ":messaging")
 useTestFixtures(project: ":modelCore")
 useTestFixtures(project: ":logging")

@@ -89,6 +89,9 @@ include 'smokeTest'
 include 'compositeBuilds'
 include 'workers'
 include 'runtimeApiInfo'
+include 'persistentCache'
+include 'buildCache'
+include 'coreApi'
 
 rootProject.name = 'gradle'
 rootProject.children.each {project ->

@@ -17,6 +17,8 @@
 package org.gradle.initialization;
 
 import com.google.common.collect.ImmutableList;
+import org.gradle.BuildAdapter;
+import org.gradle.BuildResult;
 import org.gradle.StartParameter;
 import org.gradle.api.internal.ExceptionAnalyser;
 import org.gradle.api.internal.GradleInternal;
@@ -24,7 +26,7 @@ import org.gradle.api.internal.tasks.execution.statistics.TaskExecutionStatistic
 import org.gradle.api.logging.Logging;
 import org.gradle.api.logging.configuration.ShowStacktrace;
 import org.gradle.configuration.BuildConfigurer;
-import org.gradle.deployment.internal.DeploymentRegistry;
+import org.gradle.deployment.internal.DefaultDeploymentRegistry;
 import org.gradle.execution.BuildConfigurationActionExecuter;
 import org.gradle.execution.BuildExecuter;
 import org.gradle.internal.buildevents.BuildLogger;
@@ -32,7 +34,6 @@ import org.gradle.internal.buildevents.ProjectEvaluationLogger;
 import org.gradle.internal.buildevents.TaskExecutionLogger;
 import org.gradle.internal.buildevents.TaskExecutionStatisticsReporter;
 import org.gradle.internal.classpath.ClassPath;
-import org.gradle.internal.cleanup.BuildOutputCleanupListener;
 import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.featurelifecycle.LoggingDeprecatedFeatureHandler;
@@ -98,7 +99,10 @@ public class DefaultGradleLauncherFactory implements GradleLauncherFactory {
         }
         BuildTreeScopeServices buildTreeScopeServices = (BuildTreeScopeServices) parentRegistry;
 
-        DefaultGradleLauncher launcher = doNewInstance(startParameter, null, requestContext.getCancellationToken(), requestContext, requestContext.getEventConsumer(), buildTreeScopeServices, ImmutableList.of(new Stoppable() {
+        DefaultGradleLauncher launcher = doNewInstance(startParameter, null,
+            requestContext.getCancellationToken(),
+            requestContext, requestContext.getEventConsumer(), buildTreeScopeServices,
+            ImmutableList.of(new Stoppable() {
             @Override
             public void stop() {
                 rootBuild = null;
@@ -106,14 +110,20 @@ public class DefaultGradleLauncherFactory implements GradleLauncherFactory {
         }));
         rootBuild = launcher;
 
-        DeploymentRegistry deploymentRegistry = parentRegistry.get(DeploymentRegistry.class);
-        deploymentRegistry.onNewBuild(launcher.getGradle());
+        final DefaultDeploymentRegistry deploymentRegistry = parentRegistry.get(DefaultDeploymentRegistry.class);
+        launcher.getGradle().addBuildListener(new BuildAdapter() {
+            @Override
+            public void buildFinished(BuildResult result) {
+                deploymentRegistry.buildFinished(result);
+            }
+        });
 
         return launcher;
     }
 
     private DefaultGradleLauncher doNewInstance(StartParameter startParameter, GradleLauncher parent,
-                                                BuildCancellationToken cancellationToken, BuildRequestMetaData requestMetaData, BuildEventConsumer buildEventConsumer,
+                                                BuildCancellationToken cancellationToken,
+                                                BuildRequestMetaData requestMetaData, BuildEventConsumer buildEventConsumer,
                                                 final BuildTreeScopeServices buildTreeScopeServices, List<?> servicesToStop) {
         BuildScopeServices serviceRegistry = new BuildScopeServices(buildTreeScopeServices);
         serviceRegistry.add(BuildRequestMetaData.class, requestMetaData);
@@ -141,8 +151,6 @@ public class DefaultGradleLauncherFactory implements GradleLauncherFactory {
 
         ScriptUsageLocationReporter usageLocationReporter = new ScriptUsageLocationReporter();
         listenerManager.addListener(usageLocationReporter);
-        BuildOutputCleanupListener buildOutputCleanupListener = serviceRegistry.get(BuildOutputCleanupListener.class);
-        listenerManager.addListener(buildOutputCleanupListener);
         ShowStacktrace showStacktrace = startParameter.getShowStacktrace();
         switch (showStacktrace) {
             case ALWAYS:

@@ -85,6 +85,7 @@ public class SkipCachedTaskExecuter implements TaskExecuter {
                         if (originMetadata != null) {
                             state.setOutcome(TaskExecutionOutcome.FROM_CACHE);
                             context.setOriginBuildInvocationId(originMetadata.getBuildInvocationId());
+                            taskState.snapshotAfterTask(null);
                             return;
                         }
                     } catch (UnrecoverableTaskOutputUnpackingException e) {
@@ -111,7 +112,7 @@ public class SkipCachedTaskExecuter implements TaskExecuter {
                     try {
                         buildCache.store(buildCacheCommandFactory.createStore(cacheKey, outputProperties, task, clock));
                     } catch (Exception e) {
-                        LOGGER.warn("Failed to store cache entry {} for {}", cacheKey, task, e);
+                        LOGGER.warn("Failed to store cache entry {}", cacheKey.getDisplayName(), task, e);
                     }
                 } else {
                     LOGGER.debug("Not pushing result from {} to cache because the task failed", task);

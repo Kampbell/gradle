@@ -29,7 +29,8 @@ public class BuildProgressLogger implements LoggerProvider {
     public static final String WAITING_PHASE_DESCRIPTION = "WAITING";
 
     private final ProgressLoggerProvider loggerProvider;
-    private boolean taskGraphPopulated;
+    private boolean rootBuildInitComplete;
+    private boolean rootTaskGraphPopulated;
 
     private ProgressLogger buildProgress;
 
@@ -47,6 +48,7 @@ public class BuildProgressLogger implements LoggerProvider {
 
     public void settingsEvaluated() {
         buildProgress.completed();
+        rootBuildInitComplete = true;
     }
 
     public void projectsLoaded(int totalProjects) {
@@ -56,15 +58,22 @@ public class BuildProgressLogger implements LoggerProvider {
     public void beforeEvaluate(String projectPath) {}
 
     public void afterEvaluate(String projectPath) {
-        if (!taskGraphPopulated) {
+        if (!rootTaskGraphPopulated) {
             buildProgress.progress("", false);
         }
     }
 
     public void graphPopulated(int totalTasks) {
-        taskGraphPopulated = true;
+        rootTaskGraphPopulated = true;
         buildProgress.completed();
         buildProgress = loggerProvider.start(EXECUTION_PHASE_DESCRIPTION, EXECUTION_PHASE_SHORT_DESCRIPTION, totalTasks);
+    }
+
+    public void nestedTaskGraphPopulated(int totalTasks) {
+        if (!rootBuildInitComplete) {
+            buildProgress.completed();
+            buildProgress = loggerProvider.start(INITIALIZATION_PHASE_DESCRIPTION, INITIALIZATION_PHASE_SHORT_DESCRIPTION, totalTasks);
+        }
     }
 
     public void beforeExecute() {}
@@ -73,8 +82,14 @@ public class BuildProgressLogger implements LoggerProvider {
         buildProgress.progress("", taskFailed);
     }
 
+    public void afterNestedExecute(boolean taskFailed) {
+        if (!rootBuildInitComplete) {
+            afterExecute(taskFailed);
+        }
+    }
+
     public void beforeComplete() {
-        buildProgress.completed(WAITING_PHASE_DESCRIPTION);
+        buildProgress.completed(WAITING_PHASE_DESCRIPTION, false);
         buildProgress = null;
     }
 

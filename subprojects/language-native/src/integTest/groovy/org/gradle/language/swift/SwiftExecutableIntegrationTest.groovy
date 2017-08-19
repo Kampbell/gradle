@@ -17,8 +17,9 @@
 package org.gradle.language.swift
 
 import org.gradle.nativeplatform.fixtures.AbstractInstalledToolChainIntegrationSpec
-import org.gradle.nativeplatform.fixtures.app.ExeWithLibraryUsingSwiftLibraryHelloWorldApp
-import org.gradle.nativeplatform.fixtures.app.SwiftHelloWorldApp
+import org.gradle.nativeplatform.fixtures.app.SwiftApp
+import org.gradle.nativeplatform.fixtures.app.SwiftAppWithLibraries
+import org.gradle.nativeplatform.fixtures.app.SwiftAppWithLibrary
 import org.gradle.util.Requires
 import org.gradle.util.TestPrecondition
 
@@ -26,8 +27,6 @@ import static org.gradle.util.Matchers.containsText
 
 @Requires(TestPrecondition.SWIFT_SUPPORT)
 class SwiftExecutableIntegrationTest extends AbstractInstalledToolChainIntegrationSpec {
-    def helloWorldApp = new SwiftHelloWorldApp()
-
     def "build fails when compilation fails"() {
         given:
         buildFile << """
@@ -35,7 +34,7 @@ class SwiftExecutableIntegrationTest extends AbstractInstalledToolChainIntegrati
          """
 
         and:
-        helloWorldApp.brokenFile.writeToDir(file("src/main"))
+        file("src/main/swift/broken.swift") << "broken!"
 
         expect:
         fails "assemble"
@@ -44,12 +43,12 @@ class SwiftExecutableIntegrationTest extends AbstractInstalledToolChainIntegrati
         failure.assertThatCause(containsText("Swift compiler failed while compiling swift file(s)"))
     }
 
-    def "sources are compiled with Swift compiler"() {
+    def "sources are compiled and linked with Swift tools"() {
         settingsFile << "rootProject.name = 'app'"
-        def app = new SwiftHelloWorldApp()
+        def app = new SwiftApp()
 
         given:
-        app.writeSources(file('src/main'))
+        app.writeToProject(testDirectory)
 
         and:
         buildFile << """
@@ -59,119 +58,333 @@ class SwiftExecutableIntegrationTest extends AbstractInstalledToolChainIntegrati
         expect:
         succeeds "assemble"
         result.assertTasksExecuted(":compileSwift", ":linkMain", ":installMain", ":assemble")
-        executable("build/exe/app").exec().out == app.englishOutput
+
+        executable("build/exe/app").assertExists()
+        installation("build/install/app").exec().out == app.expectedOutput
+    }
+
+    def "ignores non-Swift source files in source directory"() {
+        settingsFile << "rootProject.name = 'app'"
+        def app = new SwiftApp()
+
+        given:
+        app.writeToProject(testDirectory)
+        file("src/main/swift/ignore.cpp") << 'broken!'
+        file("src/main/swift/ignore.c") << 'broken!'
+        file("src/main/swift/ignore.m") << 'broken!'
+        file("src/main/swift/ignore.h") << 'broken!'
+        file("src/main/swift/ignore.java") << 'broken!'
+
+        and:
+        buildFile << """
+            apply plugin: 'swift-executable'
+         """
+
+        expect:
+        succeeds "assemble"
+        result.assertTasksExecuted(":compileSwift", ":linkMain", ":installMain", ":assemble")
+
+        executable("build/exe/app").assertExists()
+        installation("build/install/app").exec().out == app.expectedOutput
+    }
+
+    def "build logic can change source layout convention"() {
+        settingsFile << "rootProject.name = 'app'"
+        def app = new SwiftApp()
+
+        given:
+        app.writeToSourceDir(file("Sources"))
+        file("src/main/swift/broken.swift") << "ignore me!"
+
+        and:
+        buildFile << """
+            apply plugin: 'swift-executable'
+            executable {
+                source.from 'Sources'
+            }
+         """
+
+        expect:
+        succeeds "assemble"
+        result.assertTasksExecuted(":compileSwift", ":linkMain", ":installMain", ":assemble")
+
+        file("build/main/objs").assertIsDir()
+        executable("build/exe/app").assertExists()
+        installation("build/install/app").exec().out == app.expectedOutput
+    }
+
+    def "build logic can add individual source files"() {
+        settingsFile << "rootProject.name = 'app'"
+        def app = new SwiftApp()
+
+        given:
+        app.main.writeToSourceDir(file("src/main.swift"))
+        app.greeter.writeToSourceDir(file("src/one.swift"))
+        app.sum.writeToSourceDir(file("src/two.swift"))
+        file("src/main/swift/broken.swift") << "ignore me!"
+
+        and:
+        buildFile << """
+            apply plugin: 'swift-executable'
+            executable {
+                source {
+                    from('src/main.swift')
+                    from('src/one.swift')
+                    from('src/two.swift')
+                }
+            }
+         """
+
+        expect:
+        succeeds "assemble"
+        result.assertTasksExecuted(":compileSwift", ":linkMain", ":installMain", ":assemble")
+
+        file("build/main/objs").assertIsDir()
+        executable("build/exe/app").assertExists()
+        installation("build/install/app").exec().out == app.expectedOutput
+    }
+
+    def "build logic can change buildDir"() {
+        settingsFile << "rootProject.name = 'app'"
+        def app = new SwiftApp()
+
+        given:
+        app.writeToProject(testDirectory)
+
+        and:
+        buildFile << """
+            apply plugin: 'swift-executable'
+            buildDir = 'output'
+         """
+
+        expect:
+        succeeds "assemble"
+        result.assertTasksExecuted(":compileSwift", ":linkMain", ":installMain", ":assemble")
+
+        !file("build").exists()
+        file("output/main/objs").assertIsDir()
+        executable("output/exe/app").assertExists()
+        installation("output/install/app").exec().out == app.expectedOutput
+    }
+
+    def "build logic can change task output locations"() {
+        settingsFile << "rootProject.name = 'app'"
+        def app = new SwiftApp()
+
+        given:
+        app.writeToProject(testDirectory)
+
+        and:
+        buildFile << """
+            apply plugin: 'swift-executable'
+            compileSwift.objectFileDirectory.set(layout.buildDirectory.dir("object-files"))
+            linkMain.binaryFile.set(layout.buildDirectory.file("exe/some-app.exe"))
+            installMain.installDirectory.set(layout.buildDirectory.dir("some-app"))
+         """
+
+        expect:
+        succeeds "assemble"
+        result.assertTasksExecuted(":compileSwift", ":linkMain", ":installMain", ":assemble")
+
+        file("build/object-files").assertIsDir()
+        file("build/exe/some-app.exe").assertIsFile()
+        installation("build/some-app").exec().out == app.expectedOutput
     }
 
     def "can compile and link against a library"() {
-        settingsFile << "include 'app', 'Greeter'"
-        def app = new SwiftHelloWorldApp()
+        settingsFile << "include 'app', 'greeter'"
+        def app = new SwiftAppWithLibrary()
 
         given:
         buildFile << """
             project(':app') {
                 apply plugin: 'swift-executable'
                 dependencies {
-                    implementation project(':Greeter')
+                    implementation project(':greeter')
                 }
             }
-            project(':Greeter') {
-                apply plugin: 'swift-module'
+            project(':greeter') {
+                apply plugin: 'swift-library'
             }
 """
-        app.library.sourceFiles.each { it.writeToFile(file("Greeter/src/main/swift/$it.name")) }
-        app.executable.sourceFiles.each { it.writeToDir(file('app/src/main')) }
-        def f = file('app/src/main/swift/main.swift')
-        f.text = """import Greeter
-
-${f.text}"""
+        app.library.writeToProject(file("greeter"))
+        app.executable.writeToProject(file("app"))
 
         expect:
         succeeds ":app:assemble"
-        result.assertTasksExecuted(":Greeter:compileSwift", ":Greeter:linkMain", ":app:compileSwift", ":app:linkMain", ":app:installMain", ":app:assemble")
+        result.assertTasksExecuted(":greeter:compileSwift", ":greeter:linkMain", ":app:compileSwift", ":app:linkMain", ":app:installMain", ":app:assemble")
+
         executable("app/build/exe/app").assertExists()
-        sharedLibrary("Greeter/build/lib/Greeter").assertExists()
-        installation("app/build/install/app").exec().out == app.englishOutput
-        sharedLibrary("app/build/install/app/lib/Greeter").file.assertExists()
+        sharedLibrary("greeter/build/lib/greeter").assertExists()
+        installation("app/build/install/app").exec().out == app.expectedOutput
+        sharedLibrary("app/build/install/app/lib/greeter").file.assertExists()
     }
 
-    def "can compile and link against library with dependencies"() {
-        settingsFile << "include 'app', 'Hello', 'Greeting'"
-        def app = new ExeWithLibraryUsingSwiftLibraryHelloWorldApp()
+    def "can compile and link against library with API dependencies"() {
+        settingsFile << "include 'app', 'hello', 'log'"
+        def app = new SwiftAppWithLibraries()
 
         given:
         buildFile << """
             project(':app') {
                 apply plugin: 'swift-executable'
                 dependencies {
-                    implementation project(':Hello')
+                    implementation project(':hello')
                 }
             }
-            project(':Hello') {
-                apply plugin: 'swift-module'
+            project(':hello') {
+                apply plugin: 'swift-library'
                 dependencies {
-                    api project(':Greeting')
+                    api project(':log')
                 }
             }
-            project(':Greeting') {
-                apply plugin: 'swift-module'
+            project(':log') {
+                apply plugin: 'swift-library'
             }
 """
-        app.library.sourceFiles.each { it.writeToFile(file("Hello/src/main/swift/$it.name")) }
-        app.greetingsLibrary.sourceFiles.each { it.writeToFile(file("Greeting/src/main/swift/$it.name")) }
-        app.executable.sourceFiles.each { it.writeToDir(file('app/src/main')) }
+        app.library.writeToProject(file("hello"))
+        app.logLibrary.writeToProject(file("log"))
+        app.executable.writeToProject(file("app"))
 
         expect:
         succeeds ":app:assemble"
-        result.assertTasksExecuted(":Hello:compileSwift", ":Hello:linkMain", ":Greeting:compileSwift", ":Greeting:linkMain", ":app:compileSwift", ":app:linkMain", ":app:installMain", ":app:assemble")
-        sharedLibrary("Hello/build/lib/Hello").assertExists()
-        sharedLibrary("Greeting/build/lib/Greeting").assertExists()
-        executable("app/build/exe/app").exec().out == app.englishOutput
-        sharedLibrary("app/build/install/app/lib/Hello").file.assertExists()
-        sharedLibrary("app/build/install/app/lib/Greeting").file.assertExists()
+        result.assertTasksExecuted(":hello:compileSwift", ":hello:linkMain", ":log:compileSwift", ":log:linkMain", ":app:compileSwift", ":app:linkMain", ":app:installMain", ":app:assemble")
+
+        sharedLibrary("hello/build/lib/hello").assertExists()
+        sharedLibrary("log/build/lib/log").assertExists()
+        executable("app/build/exe/app").exec().out == app.expectedOutput
+        sharedLibrary("app/build/install/app/lib/hello").file.assertExists()
+        sharedLibrary("app/build/install/app/lib/log").file.assertExists()
+    }
+
+    def "honors changes to library buildDir"() {
+        settingsFile << "include 'app', 'hello', 'log'"
+        def app = new SwiftAppWithLibraries()
+
+        given:
+        buildFile << """
+            project(':app') {
+                apply plugin: 'swift-executable'
+                dependencies {
+                    implementation project(':hello')
+                }
+            }
+            project(':hello') {
+                apply plugin: 'swift-library'
+                dependencies {
+                    api project(':log')
+                }
+            }
+            project(':log') {
+                apply plugin: 'swift-library'
+                buildDir = 'out'
+            }
+"""
+        app.library.writeToProject(file("hello"))
+        app.logLibrary.writeToProject(file("log"))
+        app.executable.writeToProject(file("app"))
+
+        expect:
+        succeeds ":app:assemble"
+        result.assertTasksExecuted(":hello:compileSwift", ":hello:linkMain", ":log:compileSwift", ":log:linkMain", ":app:compileSwift", ":app:linkMain", ":app:installMain", ":app:assemble")
+
+        !file("log/build").exists()
+        sharedLibrary("hello/build/lib/hello").assertExists()
+        sharedLibrary("log/out/lib/log").assertExists()
+        executable("app/build/exe/app").exec().out == app.expectedOutput
+        sharedLibrary("app/build/install/app/lib/hello").file.assertExists()
+        sharedLibrary("app/build/install/app/lib/log").file.assertExists()
+    }
+
+    def "multiple components can share the same source directory"() {
+        settingsFile << "include 'app', 'hello', 'log'"
+        def app = new SwiftAppWithLibraries()
+
+        given:
+        buildFile << """
+            project(':app') {
+                apply plugin: 'swift-executable'
+                dependencies {
+                    implementation project(':hello')
+                }
+                executable {
+                    source.from '../Sources/${app.main.sourceFile.name}'
+                }
+            }
+            project(':hello') {
+                apply plugin: 'swift-library'
+                dependencies {
+                    api project(':log')
+                }
+                library {
+                    source.from '../Sources/${app.greeter.sourceFile.name}'
+                }
+            }
+            project(':log') {
+                apply plugin: 'swift-library'
+                library {
+                    source.from '../Sources/${app.logger.sourceFile.name}'
+                }
+            }
+"""
+        app.library.writeToSourceDir(file("Sources"))
+        app.logLibrary.writeToSourceDir(file("Sources"))
+        app.executable.writeToSourceDir(file("Sources"))
+
+        expect:
+        succeeds ":app:assemble"
+        result.assertTasksExecuted(":hello:compileSwift", ":hello:linkMain", ":log:compileSwift", ":log:linkMain", ":app:compileSwift", ":app:linkMain", ":app:installMain", ":app:assemble")
+
+        sharedLibrary("hello/build/lib/hello").assertExists()
+        sharedLibrary("log/build/lib/log").assertExists()
+        executable("app/build/exe/app").exec().out == app.expectedOutput
+        sharedLibrary("app/build/install/app/lib/hello").file.assertExists()
+        sharedLibrary("app/build/install/app/lib/log").file.assertExists()
     }
 
     def "can compile and link against libraries in included builds"() {
         settingsFile << """
             rootProject.name = 'app'
-            includeBuild 'Hello'
-            includeBuild 'Greeting'
+            includeBuild 'hello'
+            includeBuild 'log'
         """
-        file("Hello/settings.gradle") << "rootProject.name = 'Hello'"
-        file("Greeting/settings.gradle") << "rootProject.name = 'Greeting'"
+        file("hello/settings.gradle") << "rootProject.name = 'hello'"
+        file("log/settings.gradle") << "rootProject.name = 'log'"
 
-        def app = new ExeWithLibraryUsingSwiftLibraryHelloWorldApp()
+        def app = new SwiftAppWithLibraries()
 
         given:
         buildFile << """
             apply plugin: 'swift-executable'
             dependencies {
-                implementation 'test:Hello:1.2'
+                implementation 'test:hello:1.2'
             }
         """
-        file("Hello/build.gradle") << """
-            apply plugin: 'swift-module'
+        file("hello/build.gradle") << """
+            apply plugin: 'swift-library'
             group = 'test'
             dependencies {
-                api 'test:Greeting:1.4'
+                api 'test:log:1.4'
             }
         """
-        file("Greeting/build.gradle") << """
-            apply plugin: 'swift-module'
+        file("log/build.gradle") << """
+            apply plugin: 'swift-library'
             group = 'test'
         """
 
-        app.library.sourceFiles.each { it.writeToFile(file("Hello/src/main/swift/$it.name")) }
-        app.greetingsLibrary.sourceFiles.each { it.writeToFile(file("Greeting/src/main/swift/$it.name")) }
-        app.executable.sourceFiles.each { it.writeToDir(file('src/main')) }
+        app.library.writeToProject(file("hello"))
+        app.logLibrary.writeToProject(file("log"))
+        app.executable.writeToProject(testDirectory)
 
         expect:
         succeeds ":assemble"
-        result.assertTasksExecuted(":Hello:compileSwift", ":Hello:linkMain", ":Greeting:compileSwift", ":Greeting:linkMain", ":compileSwift", ":linkMain", ":installMain", ":assemble")
-        sharedLibrary("Hello/build/lib/Hello").assertExists()
-        sharedLibrary("Greeting/build/lib/Greeting").assertExists()
+        result.assertTasksExecuted(":hello:compileSwift", ":hello:linkMain", ":log:compileSwift", ":log:linkMain", ":compileSwift", ":linkMain", ":installMain", ":assemble")
+
+        sharedLibrary("hello/build/lib/hello").assertExists()
+        sharedLibrary("log/build/lib/log").assertExists()
         executable("build/exe/app").assertExists()
-        installation("build/install/app").exec().out == app.englishOutput
-        sharedLibrary("build/install/app/lib/Hello").file.assertExists()
-        sharedLibrary("build/install/app/lib/Greeting").file.assertExists()
+        installation("build/install/app").exec().out == app.expectedOutput
+        sharedLibrary("build/install/app/lib/hello").file.assertExists()
+        sharedLibrary("build/install/app/lib/log").file.assertExists()
     }
 }

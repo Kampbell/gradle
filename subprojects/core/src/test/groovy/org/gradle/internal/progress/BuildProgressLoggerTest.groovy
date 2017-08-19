@@ -42,6 +42,38 @@ class BuildProgressLoggerTest extends Specification {
         0 * _
     }
 
+    def "logs progress of nested build tasks during initialization phase"() {
+        when:
+        buildProgressLogger.buildStarted()
+        buildProgressLogger.nestedTaskGraphPopulated(50)
+
+        then:
+        1 * provider.start(BuildProgressLogger.INITIALIZATION_PHASE_DESCRIPTION, _, 0) >> buildProgress
+        1 * buildProgress.completed()
+        1 * provider.start(BuildProgressLogger.INITIALIZATION_PHASE_DESCRIPTION, _, 50) >> buildProgress
+        0 * _
+
+        when:
+        buildProgressLogger.afterNestedExecute(false)
+
+        then:
+        1 * buildProgress.progress("", false)
+        0 * _
+
+        when:
+        buildProgressLogger.settingsEvaluated()
+
+        then:
+        1 * buildProgress.completed()
+        0 * _
+
+        when:
+        buildProgressLogger.afterNestedExecute(false)
+
+        then:
+        0 * _
+    }
+
     def "logs configuration phase"() {
         when:
         buildProgressLogger.buildStarted()
@@ -97,7 +129,7 @@ class BuildProgressLoggerTest extends Specification {
         buildProgressLogger.beforeComplete()
 
         then:
-        1 * buildProgress.completed(_)
+        1 * buildProgress.completed(_, false)
         0 * _
     }
 
@@ -136,7 +168,7 @@ class BuildProgressLoggerTest extends Specification {
         buildProgressLogger.beforeComplete()
 
         then:
-        1 * buildProgress.completed(_)
+        1 * buildProgress.completed(_, false)
         0 * _
     }
 
@@ -147,7 +179,7 @@ class BuildProgressLoggerTest extends Specification {
 
         then:
         1 * provider.start(BuildProgressLogger.INITIALIZATION_PHASE_DESCRIPTION, _, 0) >> buildProgress
-        1 * buildProgress.completed({it.contains(BuildProgressLogger.WAITING_PHASE_DESCRIPTION)})
+        1 * buildProgress.completed({it.contains(BuildProgressLogger.WAITING_PHASE_DESCRIPTION)}, false)
         0 * _
     }
 }

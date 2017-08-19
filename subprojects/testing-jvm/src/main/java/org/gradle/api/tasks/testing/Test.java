@@ -92,6 +92,7 @@ import org.gradle.internal.logging.text.StyledTextOutputFactory;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.remote.internal.inet.InetAddressFactory;
+import org.gradle.internal.time.TimeProvider;
 import org.gradle.internal.work.WorkerLeaseRegistry;
 import org.gradle.listener.ClosureBackedMethodInvocationDispatch;
 import org.gradle.process.JavaForkOptions;
@@ -115,7 +116,7 @@ import static org.gradle.util.ConfigureUtil.configureUsing;
  * Executes JUnit (3.8.x or 4.x) or TestNG tests. Test are always run in (one or more) separate JVMs.
  * The sample below shows various configuration options.
  *
- * <pre autoTested=''>
+ * <pre class='autoTested'>
  * apply plugin: 'java' // adds 'test' task
  *
  * test {
@@ -140,12 +141,12 @@ import static org.gradle.util.ConfigureUtil.configureUsing;
  *   jvmArgs '-XX:MaxPermSize=256m'
  *
  *   // listen to events in the test execution lifecycle
- *   beforeTest { descriptor ->
+ *   beforeTest { descriptor -&gt;
  *      logger.lifecycle("Running test: " + descriptor)
  *   }
  *
  *   // listen to standard out and standard error of the test JVM(s)
- *   onOutput { descriptor, event ->
+ *   onOutput { descriptor, event -&gt;
  *      logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
  *   }
  * }
@@ -658,7 +659,8 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
             testExecuter = new DefaultTestExecuter(getProcessBuilderFactory(), getActorFactory(), getModuleRegistry(),
                 getServices().get(WorkerLeaseRegistry.class),
                 getServices().get(BuildOperationExecutor.class),
-                getServices().get(StartParameter.class).getMaxWorkerCount());
+                getServices().get(StartParameter.class).getMaxWorkerCount(),
+                getServices().get(TimeProvider.class));
         }
 
         JavaVersion javaVersion = getJavaVersion();
@@ -817,11 +819,11 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
      * Adds a closure to be notified when output from the test received. A {@link org.gradle.api.tasks.testing.TestDescriptor} and {@link org.gradle.api.tasks.testing.TestOutputEvent} instance are
      * passed to the closure as a parameter.
      *
-     * <pre autoTested=''>
+     * <pre class='autoTested'>
      * apply plugin: 'java'
      *
      * test {
-     *    onOutput { descriptor, event ->
+     *    onOutput { descriptor, event -&gt;
      *        if (event.destination == TestOutputEvent.Destination.StdErr) {
      *            logger.error("Test: " + descriptor + ", error: " + event.message)
      *        }
@@ -836,7 +838,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     }
 
     /**
-     * Adds include patterns for the files in the test classes directory (e.g. '**&#2F;*Test.class')).
+     * Adds include patterns for the files in the test classes directory (e.g. '**&#47;*Test.class')).
      *
      * @see #setIncludes(Iterable)
      */
@@ -847,7 +849,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     }
 
     /**
-     * Adds include patterns for the files in the test classes directory (e.g. '**&#2F;*Test.class')).
+     * Adds include patterns for the files in the test classes directory (e.g. '**&#47;*Test.class')).
      *
      * @see #setIncludes(Iterable)
      */
@@ -876,7 +878,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     }
 
     /**
-     * Adds exclude patterns for the files in the test classes directory (e.g. '**&#2F;*Test.class')).
+     * Adds exclude patterns for the files in the test classes directory (e.g. '**&#47;*Test.class')).
      *
      * @see #setExcludes(Iterable)
      */
@@ -887,7 +889,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     }
 
     /**
-     * Adds exclude patterns for the files in the test classes directory (e.g. '**&#2F;*Test.class')).
+     * Adds exclude patterns for the files in the test classes directory (e.g. '**&#47;*Test.class')).
      *
      * @see #setExcludes(Iterable)
      */
@@ -972,7 +974,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
      * Sets the directories to scan for compiled test sources.
      *
      * Typically, this would be configured to use the output of a source set:
-     * <pre autoTested=''>
+     * <pre class='autoTested'>
      * apply plugin: 'java'
      *
      * sourceSets {
@@ -1283,7 +1285,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     /**
      * Allows to set options related to which test events are logged to the console, and on which detail level. For example, to show more information about exceptions use:
      *
-     * <pre autoTested=''>
+     * <pre class='autoTested'>
      * apply plugin: 'java'
      *
      * test.testLogging {
@@ -1304,7 +1306,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     /**
      * Allows configuring the logging of the test execution, for example log eagerly the standard output, etc.
      *
-     * <pre autoTested=''>
+     * <pre class='autoTested'>
      * apply plugin: 'java'
      *
      * // makes the standard streams (err and out) visible at console when running tests
@@ -1322,7 +1324,7 @@ public class Test extends ConventionTask implements JavaForkOptions, PatternFilt
     /**
      * Allows configuring the logging of the test execution, for example log eagerly the standard output, etc.
      *
-     * <pre autoTested=''>
+     * <pre class='autoTested'>
      * apply plugin: 'java'
      *
      * // makes the standard streams (err and out) visible at console when running tests

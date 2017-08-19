@@ -32,7 +32,7 @@ class CachedTaskIntegrationTest extends AbstractIntegrationSpec implements Direc
         buildFile << defineCacheableTask()
         withBuildCache().succeeds "cacheable", "--info"
         expect:
-        result.assertOutputContains "Using local directory build cache for the root build (location = ${cacheDir})."
+        result.assertOutputContains "Using local directory build cache for the root build (location = ${cacheDir}, targetSize = 5 GB)."
     }
 
     def "cache entry contains expected contents"() {
@@ -119,7 +119,7 @@ class CachedTaskIntegrationTest extends AbstractIntegrationSpec implements Direc
         """
             @CacheableTask
             class CustomTask extends DefaultTask {
-                @OutputDirectory File outputDir = temporaryDir
+                @OutputDirectory File outputDir = new File(temporaryDir, 'output')
                 @TaskAction
                 void generate() {
                     new File(outputDir, "output").text = "OK"

@@ -19,7 +19,7 @@ package org.gradle.api.tasks.application;
  * Creates start scripts for launching JVM applications.
  * <p>
  * Example:
- * <pre autoTested=''>
+ * <pre class='autoTested'>
  * task createStartScripts(type: CreateStartScripts) {
  *   outputDir = file('build/sample')
  *   mainClassName = 'org.gradle.test.Main'
@@ -35,7 +35,7 @@ package org.gradle.api.tasks.application;
  * {@link org.gradle.jvm.application.scripts.ScriptGenerator}.
  * <p>
  * Example:
- * <pre autoTested=''>
+ * <pre class='autoTested'>
  * task createStartScripts(type: CreateStartScripts) {
  *   unixStartScriptGenerator = new CustomUnixStartScriptGenerator()
  *   windowsStartScriptGenerator = new CustomWindowsStartScriptGenerator()
@@ -59,7 +59,6 @@ package org.gradle.api.tasks.application;
  * <p>
  * The default implementations used by this task use <a href="http://docs.groovy-lang.org/latest/html/documentation/template-engines.html#_simpletemplateengine">Groovy's SimpleTemplateEngine</a>
  * to parse the template, with the following variables available:
- * <p>
  * <ul>
  * <li>{@code applicationName}</li>
  * <li>{@code optsEnvironmentVar}</li>
@@ -72,7 +71,6 @@ package org.gradle.api.tasks.application;
  * </ul>
  * <p>
  * Example:
- * <p>
  * <pre>
  * task createStartScripts(type: CreateStartScripts) {
  *   unixStartScriptGenerator.template = resources.text.fromFile('customUnixStartScript.txt')

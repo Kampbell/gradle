@@ -38,7 +38,7 @@ public abstract class AbstractClasspathSnapshotBuilder extends FileCollectionSna
     private final byte[] jarHasherConfigurationHash;
 
     public AbstractClasspathSnapshotBuilder(ResourceHasher classpathResourceHasher, ResourceSnapshotterCacheService cacheService, StringInterner stringInterner) {
-        super(TaskFilePropertyCompareStrategy.ORDERED, TaskFilePropertySnapshotNormalizationStrategy.NONE, stringInterner);
+        super(TaskFilePropertyCompareStrategy.ORDERED, InputPathNormalizationStrategy.NONE, stringInterner);
         this.cacheService = cacheService;
         this.stringInterner = stringInterner;
         this.classpathResourceHasher = classpathResourceHasher;
@@ -71,7 +71,7 @@ public abstract class AbstractClasspathSnapshotBuilder extends FileCollectionSna
 
     @Override
     public void visitFileSnapshot(RegularFileSnapshot file) {
-        if (FileUtils.isJar(file.getName())) {
+        if (FileUtils.hasExtensionIgnoresCase(file.getName(), ".jar")) {
             visitJar(file);
         } else {
             visitNonJar(file);

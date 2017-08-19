@@ -42,11 +42,12 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
 
     public TaskArtifactState getStateFor(final TaskInternal task) {
 
-        if (!task.getOutputs().getHasOutput()) { // Only false if no declared outputs AND no Task.upToDateWhen spec. We force to true for incremental tasks.
-            return new NoHistoryArtifactState();
+        // Only false if no declared outputs AND no Task.upToDateWhen spec. We force to true for incremental tasks.
+        if (!task.getOutputs().getHasOutput()) {
+            return NoHistoryArtifactState.INSTANCE;
         }
 
-        final TaskArtifactState state = repository.getStateFor(task);
+        TaskArtifactState state = repository.getStateFor(task);
 
         if (startParameter.isRerunTasks()) {
             return new RerunTaskArtifactState(state, task, "Executed with '--rerun-tasks'.");
@@ -72,6 +73,8 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
 
         @Override
         public boolean isUpToDate(Collection<String> messages) {
+            // Ensure that we snapshot the task's inputs
+            delegate.ensureSnapshotBeforeTask();
             messages.add(reason);
             return false;
         }
@@ -113,8 +116,8 @@ public class ShortCircuitTaskArtifactStateRepository implements TaskArtifactStat
         }
 
         @Override
-        public void afterTask(Throwable failure) {
-            delegate.afterTask(failure);
+        public void snapshotAfterTask(Throwable failure) {
+            delegate.snapshotAfterTask(failure);
         }
     }
 

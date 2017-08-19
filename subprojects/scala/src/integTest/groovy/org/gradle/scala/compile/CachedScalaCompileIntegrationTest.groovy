@@ -35,9 +35,7 @@ class CachedScalaCompileIntegrationTest extends AbstractCachedCompileIntegration
 
             mainClassName = "Hello"
 
-            repositories {
-                mavenCentral()
-            }
+            ${mavenCentralRepository()}
 
             dependencies {
                 compile group: 'org.scala-lang', name: 'scala-library', version: '2.11.8'
@@ -61,9 +59,7 @@ class CachedScalaCompileIntegrationTest extends AbstractCachedCompileIntegration
                 id 'scala'
             }
 
-            repositories {
-                mavenCentral()
-            }
+            ${mavenCentralRepository()}
             
             dependencies {
                 compile group: 'org.scala-lang', name: 'scala-library', version: '2.11.8'
@@ -172,6 +168,8 @@ class CachedScalaCompileIntegrationTest extends AbstractCachedCompileIntegration
         skipped compilationTask
 
         when:
+        // Make sure we notice when classes are recompiled
+        classes.all*.compiledClass*.makeOlder()
         classes.independentClassSource.change()
         withBuildCache().succeeds compilationTask
 
